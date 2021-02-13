@@ -5,87 +5,31 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from datetime import datetime
 from glob import glob
+import importlib
+import pandas as pd
+import folium
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import cartopy.feature as cfeat
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+import matplotlib.ticker as mticker
+import create_pickle_dados
+importlib.reload(create_pickle_dados)
+
+
 plt.close('all')
 
-def create_pickle_pnboia():
-    # boia - pnboia
-    filelist_pnboia = glob('/home/hp/Dropbox/reserva/data/pnboia/*.csv')
-    pnboia = {}
-    for f in filelist_pnboia:
-        print (f)
-        local = f.split('/')[-1].split('.')[0]
-        pnboia[local] = pd.read_csv(f, parse_dates=['Datetime'], index_col='Datetime')
-        # pnboia[local] = pnboia[local].loc[dint[0]:dint[-1]]
-        pnboia[local] = pnboia[local].rolling('3H').mean()
-        # pnboia[local] = pnboia[local].loc[(pnboia[local].Wvht < 10) & (pnboia[local].Wvht > 0.5)]
-        pnboia[local].loc[(pnboia[local].Wvht > 10) | (pnboia[local].Wvht < 0.5)] = np.nan
-    pd.to_pickle(pnboia, '/home/hp/Dropbox/reserva/data/pnboia/pnboia.pkl')
-    return
-
-def create_pickle_simcosta():
-    # boia - simcosta
-    dateparse = lambda x: datetime.strptime(x, '%Y %m %d %H %M %S')
-
-    dics = {'rj1': ['SIMCOSTA_RJ-1_OCEAN_2015-07-29_2016-10-13.csv', 35],
-            'rj2': ['SIMCOSTA_RJ-2_OCEAN_2015-07-29_2016-12-20.csv', 35],
-            'rj3': ['SIMCOSTA_RJ-3_OCEAN_2016-07-14_2021-02-12.csv', 34],
-            'rj4': ['SIMCOSTA_RJ-4_OCEAN_2017-08-28_2020-12-21.csv', 34]}
-
-    simcosta = {}
-    for boia in dics.keys():
-        simcosta[boia] = pd.read_csv('/home/hp/Dropbox/reserva/data/simcosta/{}'.format(dics[boia][0]),
-                       skiprows=dics[boia][1], parse_dates=[['YEAR', 'MONTH', 'DAY', 'HOUR', 'MINUTE', 'SECOND']],
-                       date_parser=dateparse, index_col='YEAR_MONTH_DAY_HOUR_MINUTE_SECOND')
-        # simcosta[boia] = simcosta[boia].loc[dint[0]:dint[-1]]
-        simcosta[boia] = simcosta[boia].rolling('3H').mean()
-    pd.to_pickle(simcosta, '/home/hp/Dropbox/reserva/data/simcosta/simcosta.pkl')
-    return
-
-def create_pickle_reserva():
-    # rbr - reserva
-    reserva = {}
-    reserva['rbr'] = pd.read_csv('/home/hp/Dropbox/reserva/data/swell_reserva_201611/rbr_waveparam.csv',
-                      parse_dates=['date'], index_col='date')
-    reserva['rbr'] = reserva['rbr'].resample('1H').mean()
-    # reserva['rbr'] = reserva['rbr'][dint[0]:dint[-1]]
-    reserva['rbr'] = reserva['rbr'].rolling('3H').mean()
-    pd.to_pickle(reserva, '/home/hp/Dropbox/reserva/data/swell_reserva_201611/reserva.pkl')
-    return
-
-def create_pickle_redeondas():
-    dateparse = lambda x: datetime.strptime(x, '%Y %m %d %H %M %S')
-    dics = {'cassino': 'cassino_cat_2016-10.txt',
-            'praiadoforte': 'praiadoforte_cat_2016-10_2016-11.txt'}
-    redeondas = {}
-    for p in dics.keys():
-        redeondas[p] = pd.read_csv('/home/hp/Dropbox/reserva/data/redeondas/{}'.format(dics[p]), sep='\t',
-                         parse_dates=[['AAAA','MM','DD','hh','mm','ss']],
-                         date_parser=dateparse, index_col='AAAA_MM_DD_hh_mm_ss')
-        redeondas[p].index.name = 'date'
-        redeondas[p] = redeondas[p].resample('1H').mean()
-        redeondas[p] = redeondas[p].rolling('3H').mean()
-        pd.to_pickle(redeondas, '/home/hp/Dropbox/reserva/data/redeondas/redeondas.pkl')
-    return
-
-
-
 if __name__ == "__main__":
-
-    pratsan = {}
-    pratsan['palmas'] = pd.read_csv('/home/hp/Dropbox/reserva/data/praticagem_santos/Palmas_Correntes_Ondas_2016.csv',
-                                    parse_dates=True, index_col='date_hour')
-
-    # create_pickle_pnboia()
-    # create_pickle_simcosta()
-    # create_pickle_reserva()
-    # create_pickle_redeondas()
 
     pnboia = pd.read_pickle('/home/hp/Dropbox/reserva/data/pnboia/pnboia.pkl')
     simcosta = pd.read_pickle('/home/hp/Dropbox/reserva/data/simcosta/simcosta.pkl')
     reserva = pd.read_pickle('/home/hp/Dropbox/reserva/data/swell_reserva_201611/reserva.pkl')
     redeondas = pd.read_pickle('/home/hp/Dropbox/reserva/data/redeondas/redeondas.pkl')
+    pratsan = pd.read_pickle('/home/hp/Dropbox/reserva/data/praticagem_santos/pratsan.pkl')
+    pos = pd.read_pickle('/home/hp/Dropbox/reserva/data/posicoes.pkl')
 
-
+    # plota series temporais
     fig = plt.figure(figsize=(12, 5))
     ax1 = fig.add_subplot(111)
     ax1.plot(pnboia['rio_grande'].Wvht, label='rio_grande')
@@ -98,7 +42,6 @@ if __name__ == "__main__":
     ax1.plot(reserva['rbr'].hs, label='reserva_rbr')
     ax1.plot(redeondas['cassino'].Hs, label='redeondas_cassino')
     ax1.plot(pratsan['palmas'].hs, label='pratsan_palmas')
-
 
     # nao tem dados em 2016
     # ax1.plot(pnboia['recife'].Wvht, label='recife') # nao tem dados
@@ -119,7 +62,21 @@ if __name__ == "__main__":
     ax1.set_xlim('2016-10-25 00', '2016-11-03 23')
     plt.xticks(rotation=15)
     ax1.set_ylim(0, 9)
+
+    # plota mapa com os pontos
+    fig = plt.figure(figsize=(8,6))
+    map_proj = ccrs.Mercator()
+    ax = fig.add_subplot(1,1,1, projection=map_proj)
+    ax.set_title('Pontos de medições')
+    ax.coastlines()
+    ax.set_extent([-53, -25, -35, -2.4], crs=ccrs.PlateCarree())
+    ax.scatter(x=pos.lon.values, y=pos.lat.values, color="red", s=50,
+               alpha=1, transform=ccrs.PlateCarree())
+    ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True,
+                 linewidth=2, color='gray', alpha=0.5, linestyle='--')
+
     plt.show()
+
 
 
 

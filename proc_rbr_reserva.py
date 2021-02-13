@@ -1,6 +1,5 @@
 # Processamento dos dados de onda da laje da Reserva
 
-
 import sys, os
 import numpy as np
 import pandas as pd
